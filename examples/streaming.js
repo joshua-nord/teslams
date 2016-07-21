@@ -393,7 +393,7 @@ function tsla_poll( vid, long_vid, token ) {
                 // Publish message
                 if (argv.mqtt) {
                     try {
-                        client.publish(argv.topic + '/' + vid + '/stream', JSON.stringify(streamdata));
+                        client.publish(argv.topic + '/' + vid + '/stream', JSON.stringify(streamdata),{qos: 0, retain:true});
                         //console.log('Published to topic = ' + argv.topic + '/' + vid +'\n streamdata = ' + JSON.stringify(streamdata));
                     } catch (error) {
                         // failed to send, therefore stop publishing and log the error thrown
@@ -479,7 +479,7 @@ function getAux() {
                 data.timestamp = new Date().getTime();
                 data.id_s = getAux.vid.toString();
                 try {
-                    client.publish(argv.topic + '/' + getAux.vid + '/charge_state', JSON.stringify(data));
+                    client.publish(argv.topic + '/' + getAux.vid + '/charge_state', JSON.stringify(data),{qos: 0, retain:true});
                 } catch (error) {
                     // failed to send, therefore stop publishing and log the error thrown
                     console.log('Error while publishing charge_state message to mqtt broker: ' + error.toString());
@@ -512,7 +512,7 @@ function getAux() {
                     data.timestamp = new Date().getTime();
                     data.id_s = getAux.vid.toString();
                     try {
-                        client.publish(argv.topic + '/' + getAux.vid + '/climate_state', JSON.stringify(data));
+                        client.publish(argv.topic + '/' + getAux.vid + '/climate_state', JSON.stringify(data),{qos: 0, retain:true});
                     } catch (error) {
                         // failed to send, therefore stop publishing and log the error thrown
                         console.log('Error while publishing climate_state message to mqtt broker: ' + error.toString());
@@ -544,7 +544,7 @@ function storeVehicles(vehicles) {
         //publish vehicles data
         try {
             // make this unique somehow 
-            client.publish(argv.topic + '/vehicles', JSON.stringify(doc));
+            client.publish(argv.topic + '/vehicles', JSON.stringify(doc),{qos: 0, retain:true});
         } catch (error) {
             // failed to send, therefore stop publishing and log the error thrown
             console.log('Error while publishing vehicles message to mqtt broker: ' + error.toString());
@@ -563,7 +563,7 @@ function storeVehicles(vehicles) {
         if (argv.mqtt) {
             //publish vehicle_state data
             try {
-                client.publish(argv.topic + '/' + vehicles.id + '/vehicle_state', JSON.stringify(doc));
+                client.publish(argv.topic + '/' + vehicles.id + '/vehicle_state', JSON.stringify(doc),{qos: 0, retain:true});
             } catch (error) {
                 // failed to send, therefore stop publishing and log the error thrown
                 console.log('Error while publishing vehicle_state message to mqtt broker: ' + error.toString());
@@ -581,7 +581,7 @@ function storeVehicles(vehicles) {
         if (argv.mqtt) {
             //publish gui_settings data
             try {
-                client.publish(argv.topic + '/' + vehicles.id + '/gui_settings', JSON.stringify(doc));
+                client.publish(argv.topic + '/' + vehicles.id + '/gui_settings', JSON.stringify(doc),{qos: 0, retain:true});
             } catch (error) {
                 // failed to send, therefore stop publishing and log the error thrown
                 console.log('Error while publishing gui_settings message to mqtt broker: ' + error.toString());
