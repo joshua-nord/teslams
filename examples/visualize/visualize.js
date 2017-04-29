@@ -41,6 +41,12 @@ if ( argv.help === true ) {
     console.log( 'Usage: visualize.js --db <MongoDB database> [--silent] [--verbose]');
     process.exit(1);
 }
+
+if (undefined != argv.apiKey && argv.apiKey.length > 0) {
+    apiKey = argv.apiKey;
+    console.log( 'Using maps API key: ' + apiKey);
+}
+
 // set and check the validity of the HTTP listen port 
 // the environment variable $PORT is read for deployment on heroku
 var httpport = process.env.PORT;
