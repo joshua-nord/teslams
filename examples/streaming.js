@@ -105,7 +105,7 @@ if ( argv.help == true ) {
 var nFields = argv.values.split(",").length + 1; // number of fields including ts
 
 
-if (!config.mongouri && !argv.db && !argv.awsiot && !argv.mqtt && !argv.file) {
+if (!config.mongouri && !argv.db && !argv.awsiot && !config.mqtt && !argv.file) {
     console.log('No outputs specified. Add one (or more) of --db, --file, --mqtt, or --awsiot flags to specify outputs');
     process.exit();
 }
@@ -140,14 +140,14 @@ if (argv.awsiot) {
         ulog('awsiot device connected!');
     });
 } 
-if (argv.mqtt) {
-    var client  = mqtt.connect(argv.mqtt);
+if (config.mqtt) {
+    var client  = mqtt.connect(config.mqtt);
     if (!argv.topic) {
         console.log('No MQTT topic prefix specified. Using "teslams/{id}/stream" where {id} is the vehicle id of the car');
         argv.topic = 'teslams';
     }
     client.on('connect', function () {
-        ulog('mqtt connected to broker ' + argv.mqtt);
+        ulog('mqtt connected to broker ' + config.mqtt);
     });
     client.on('error', function (error) {
         console.log('mqtt error: ' + error);
@@ -369,7 +369,7 @@ function tsla_poll( vid, long_vid, token ) {
                         if(err) util.log(err);
                 	});   
             } 
-            if ((argv.mqtt || argv.awsiot) && argv.topic) {
+            if ((config.mqtt || argv.awsiot) && argv.topic) {
                 //publish to MQTT broker on specified topic
                 var newchunk = d.replace(/[\n\r]/g, '');
                 var array = newchunk.split(',');
@@ -392,7 +392,7 @@ function tsla_poll( vid, long_vid, token ) {
                 };
                 if (!argv.silent) { ulog( 'streamdata is: ' + JSON.stringify(streamdata) ); }
                 // Publish message
-                if (argv.mqtt) {
+                if (config.mqtt) {
                     try {
                         client.publish(argv.topic + '/' + vid + '/stream', JSON.stringify(streamdata),{qos: 0, retain:true});
                         //console.log('Published to topic = ' + argv.topic + '/' + vid +'\n streamdata = ' + JSON.stringify(streamdata));
@@ -475,7 +475,7 @@ function getAux() {
                     if(err) throw err;
                 });
             }
-            if (argv.mqtt) {
+            if (config.mqtt) {
                 //publish charge_state data
                 data.timestamp = new Date().getTime();
                 data.id_s = getAux.vid.toString();
@@ -508,7 +508,7 @@ function getAux() {
                         if(err) throw err;
                     });
                 }
-                if (argv.mqtt) {
+                if (config.mqtt) {
                     //publish climate_state data
                     data.timestamp = new Date().getTime();
                     data.id_s = getAux.vid.toString();
@@ -541,7 +541,7 @@ function storeVehicles(vehicles) {
             if (err) console.dir(err);
         });
     }
-    if (argv.mqtt) {
+    if (config.mqtt) {
         //publish vehicles data
         try {
             // make this unique somehow 
@@ -561,7 +561,7 @@ function storeVehicles(vehicles) {
                 if (err) console.dir(err);
             });
         }
-        if (argv.mqtt) {
+        if (config.mqtt) {
             //publish vehicle_state data
             try {
                 client.publish(argv.topic + '/' + vehicles.id + '/vehicle_state', JSON.stringify(doc),{qos: 0, retain:true});
@@ -579,7 +579,7 @@ function storeVehicles(vehicles) {
                 if (err) console.dir(err);
             });
         }
-        if (argv.mqtt) {
+        if (config.mqtt) {
             //publish gui_settings data
             try {
                 client.publish(argv.topic + '/' + vehicles.id + '/gui_settings', JSON.stringify(doc),{qos: 0, retain:true});
