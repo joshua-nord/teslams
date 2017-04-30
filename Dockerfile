@@ -1,4 +1,4 @@
-FROM node:onbuild
+FROM node:alpine
 
 # Create app directory
 RUN mkdir -p /usr/src/teslams
@@ -13,6 +13,5 @@ COPY . /usr/src/teslams
 
 EXPOSE 3000
 
-ENTRYPOINT [ "npm", "run streaming" ]
-CMD [ "--mqtt" ]
-CMD [ "--db" ]
+ENTRYPOINT [ "npm", "run" ]
+CMD [ "streaming" ]
