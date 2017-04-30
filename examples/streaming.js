@@ -89,7 +89,7 @@ var argv = require('optimist')
     .describe('?', 'Print usage information');
 
 // get credentials either from command line or ~/.teslams/config.json
-var creds = require('./config.js').config(argv);
+var config = require('./config.js').config(argv);
 
 argv = argv.argv;
 //convert time values from minutes to milliseconds
@@ -104,14 +104,14 @@ if ( argv.help == true ) {
 
 var nFields = argv.values.split(",").length + 1; // number of fields including ts
 
-if (!argv.db && !argv.awsiot && !argv.mqtt && !argv.file) {
+if (!config.mongouri && !argv.db && !argv.awsiot && !argv.mqtt && !argv.file) {
     console.log('No outputs specified. Add one (or more) of --db, --file, --mqtt, or --awsiot flags to specify outputs');
     process.exit();
 }
-if (argv.db) {
+if (config.mongouri || argv.db) {
     MongoClient = require('mongodb').MongoClient;
-    // TODO: maybe add a mongouri config paramter to the config.json so people can set this explicitly
-    var mongoUri = process.env.MONGOLAB_URI|| process.env.MONGOHQ_URI || 'mongodb://127.0.0.1:27017/' + argv.db;
+    
+    var mongoUri = (config.mongouri || process.env.MONGOLAB_URI|| process.env.MONGOHQ_URI || 'mongodb://127.0.0.1:27017/') + argv.db;
 
     MongoClient.connect(mongoUri, function(err, db) {
         if(err) throw err;
@@ -121,11 +121,11 @@ if (argv.db) {
 } 
 if (argv.awsiot) {
     var device = awsIot.device({
-        keyPath: creds.awsiot.keyPath,    //path to your AWS Private Key
-        certPath: creds.awsiot.certPath,  //path to your AWS Public Key
-        caPath: creds.awsiot.caPath,      //path tp your AWS Root Certificate
-        clientId: creds.awsiot.clientId,  //Your AWS IoT Client ID
-        region: creds.awsiot.region       //The AWS region in whcih your IoT account is registered
+        keyPath: config.awsiot.keyPath,    //path to your AWS Private Key
+        certPath: config.awsiot.certPath,  //path to your AWS Public Key
+        caPath: config.awsiot.caPath,      //path tp your AWS Root Certificate
+        clientId: config.awsiot.clientId,  //Your AWS IoT Client ID
+        region: config.awsiot.region       //The AWS region in whcih your IoT account is registered
     });
     if (!argv.topic) {
         console.log('No AWS IOT topic specified. Using teslams/{id} where {id} is the vehicle id of the car');
@@ -160,8 +160,8 @@ if (argv.file) {
     stream = fs.createWriteStream(argv.file);
 }
 if (argv.ifttt) {
-    if (creds.ifttt) {
-        var ifttt = creds.ifttt;
+    if (config.ifttt) {
+        var ifttt = config.ifttt;
     } else {
         console.log('No IFTTT Maker trigger URL found in config.json');
     }
@@ -235,7 +235,7 @@ function tsla_poll( vid, long_vid, token ) {
                         if (napmode == true) {
                             rpm++;
                             // adding support for selecting which vehicle to poll from a multiple vehicle account 
-                            teslams.all( { email: creds.username, password: creds.password }, function ( error, response, body ) {
+                            teslams.all( { email: config.username, password: config.password }, function ( error, response, body ) {
                                 var vdata, vehicles;
                                 //check we got a valid JSON response from Tesla
                                 try { 
@@ -255,7 +255,7 @@ function tsla_poll( vid, long_vid, token ) {
                                     process.exit(1);    
                                 }
                             // end of new block added for multi-vehicle support                          
-                            //teslams.vehicles( { email: creds.username, password: creds.password }, function ( vehicles ) {  
+                            //teslams.vehicles( { email: config.username, password: config.password }, function ( vehicles ) {  
                                 if ( typeof vehicles.state != undefined ) {
                                     ulog( 'Vehicle state is: ' + vehicles.state );
                                     if (vehicles.state == 'asleep' || vehicles.state == 'unknown') {
@@ -294,7 +294,7 @@ function tsla_poll( vid, long_vid, token ) {
     srpm++; //increment the number of streaming requests per minute
     request({'uri': s_url + long_vid +'/?values=' + argv.values,
             'method' : 'GET',
-            'auth': {'user': creds.username,'pass': token},
+            'auth': {'user': config.username,'pass': token},
             'timeout' : 125000 // a bit more than the expected 2 minute max long poll
             }, function( error, response, body) {
         if ( error ) { // HTTP Error
@@ -639,7 +639,7 @@ function initstream() {
     }
     rpm++; // increment the REST API request counter
     // adding support for selecting which vehicle to poll from a multiple vehicle account 
-    teslams.all( { email: creds.username, password: creds.password }, function ( error, response, body ) {
+    teslams.all( { email: config.username, password: config.password }, function ( error, response, body ) {
         var vdata, vehicles;
         //check we got a valid JSON response from Tesla
         try { 
@@ -666,7 +666,7 @@ function initstream() {
             process.exit(1);    
         }
     // end of new block added for multi-vehicle support
-    // teslams.vehicles( { email: creds.username, password: creds.password }, function ( vehicles ) {  
+    // teslams.vehicles( { email: config.username, password: config.password }, function ( vehicles ) {  
         if ( typeof vehicles == "undefined" ) {
             console.log('Error: undefined response to vehicles request' );
             console.log('Exiting...');
