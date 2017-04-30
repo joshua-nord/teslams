@@ -104,6 +104,7 @@ if ( argv.help == true ) {
 
 var nFields = argv.values.split(",").length + 1; // number of fields including ts
 
+
 if (!config.mongouri && !argv.db && !argv.awsiot && !argv.mqtt && !argv.file) {
     console.log('No outputs specified. Add one (or more) of --db, --file, --mqtt, or --awsiot flags to specify outputs');
     process.exit();
@@ -111,8 +112,8 @@ if (!config.mongouri && !argv.db && !argv.awsiot && !argv.mqtt && !argv.file) {
 if (config.mongouri || argv.db) {
     MongoClient = require('mongodb').MongoClient;
     
-    var mongoUri = (config.mongouri || process.env.MONGOLAB_URI|| process.env.MONGOHQ_URI || 'mongodb://127.0.0.1:27017/') + argv.db;
-
+    var mongoUri = config.mongouri || process.env.MONGOLAB_URI|| process.env.MONGOHQ_URI || 'mongodb://127.0.0.1:27017/' + argv.db;
+    if (!argv.db) argv.db = true;
     MongoClient.connect(mongoUri, function(err, db) {
         if(err) throw err;
         collectionS = db.collection('tesla_stream');
@@ -617,8 +618,20 @@ function initstream() {
         icount = icount - 1;
         return;
     } 
+
     // make absolutely sure we don't overwhelm the API
     var now = new Date().getTime();
+
+    if (argv.db && undefined == collectionA) {
+        // if db isn't yet initialized, wait
+        console.log('DB not yet ready, waiting');
+        setTimeout(function() {
+            initstream();
+        }, 10000); // 10 seconds
+	icount = icount - 1;
+        return;
+    }
+
     if ( now - last < 60000) { // last request was within the past minute
         ulog( rpm + ' of ' + argv.maxrpm + ' REST requests since ' + last);
         if ( now - last < 0 ) {
