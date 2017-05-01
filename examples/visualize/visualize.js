@@ -35,15 +35,15 @@ var argv = require('optimist')
 
 
 
-var creds = require('../config.js').config(argv);
+var config = require('../config.js').config(argv);
 argv = argv.argv;
-if ( argv.help === true ) {
+if ( config.help === true ) {
     console.log( 'Usage: visualize.js --db <MongoDB database> [--silent] [--verbose]');
     process.exit(1);
 }
 
-if (undefined != argv.apiKey && argv.apiKey.length > 0) {
-    apiKey = argv.apiKey;
+if (undefined != config.apiKey && config.apiKey.length > 0) {
+    apiKey = config.apiKey;
     console.log( 'Using maps API key: ' + apiKey);
 }
 
@@ -52,10 +52,10 @@ if (undefined != argv.apiKey && argv.apiKey.length > 0) {
 var httpport = process.env.PORT;
 if ( !isNaN(httpport) && httpport >= 1) {
     console.log('Using listen port (' + httpport + ') set by $PORT environment variable');
-    argv.port = httpport;
+    config.port = httpport;
 }
 var MongoClient = require('mongodb').MongoClient;
-var mongoUri = process.env.MONGOLAB_URI|| process.env.MONGOHQ_URI || 'mongodb://127.0.0.1:27017/' + argv.db;
+var mongoUri = config.mongouri || process.env.MONGOLAB_URI|| process.env.MONGOHQ_URI || 'mongodb://127.0.0.1:27017/' + config.db;
 console.log('Using MongoDB URI: ' + mongoUri);
 var date = new Date();
 var http = require('http');
@@ -174,17 +174,17 @@ var optionText = {
 // this is super simplistic for now. Clear text passwords, nothing fancy, trivial to
 // intercept - but it's a start
 var users;
-if (creds !== undefined && creds.hasOwnProperty('visualize') && creds.visualize.hasOwnProperty('webusers')) {
-    users = creds.visualize.webusers;
+if (config !== undefined && config.hasOwnProperty('visualize') && config.visualize.hasOwnProperty('webusers')) {
+    users = config.visualize.webusers;
 }
 
 // Set the baseUrl property in your config.json if you want to run visualize in a
 // path other than the root of the webserver. For example, to run visualize at
 // http://example.com/teslavis, set visualize.baseUrl to "/teslavis"
 var baseUrl;
-if (creds !== undefined && creds.hasOwnProperty('visualize') && creds.visualize.hasOwnProperty('baseUrl')) {
-    console.log("Found a baseUrl (" + creds.visualize.baseUrl + ") in the config.json file");
-    baseUrl = creds.visualize.baseUrl;
+if (config !== undefined && config.hasOwnProperty('visualize') && config.visualize.hasOwnProperty('baseUrl')) {
+    console.log("Found a baseUrl (" + config.visualize.baseUrl + ") in the config.json file");
+    baseUrl = config.visualize.baseUrl;
 } else {
     baseUrl = "";
 }
@@ -202,7 +202,7 @@ function findById(id, fn) {
     }
 }
 function findByUsername(username, fn) {
-    if (!argv.silent) console.log("find user", username);
+    if (!config.silent) console.log("find user", username);
     for (var i = 0, len = users.length; i < len; i++) {
         var user = users[i];
         if (user.username === username) {
@@ -322,7 +322,7 @@ app.namespace(baseUrl, function() {
         var query = {'vehicles': { '$exists': true } };
         var options = { 'sort': [['ts', 'desc']], 'limit': 1};
         collectionA.find(query, options).toArray(function(err, docs) {
-            if (argv.verbose) console.dir(docs);
+            if (config.verbose) console.dir(docs);
             if (docs.length === 0) {
                 console.log("missing vehicles data in db, assuming Model S 60");
                 capacity = 60;
@@ -371,10 +371,10 @@ app.namespace(baseUrl, function() {
                 optionString += "</ul>";
                 baseString = baseString.replace("PLUS", "");
 
-                if (argv.verbose) console.log(baseString);
-                if (argv.verbose) console.log(optionString);
+                if (config.verbose) console.log(baseString);
+                if (config.verbose) console.log(optionString);
             }
-            if (argv.verbose) console.log("battery capacity", capacity);
+            if (config.verbose) console.log("battery capacity", capacity);
         });
         query = {'guiSettings': { '$exists': true } };
         options = { 'sort': [['ts', 'desc']], 'limit': 1};
@@ -460,7 +460,7 @@ app.namespace(baseUrl, function() {
 
     });
 
-    if (argv.verbose) app.use(express.logger('dev'));
+    if (config.verbose) app.use(express.logger('dev'));
 
     app.get('/', ensureAuthenticated, function(req, res) {
         // friendly welcome screen
@@ -479,7 +479,7 @@ app.namespace(baseUrl, function() {
 
     app.get('/getdata', ensureAuthenticated, function (req, res) {
         var ts, options, vals;
-        if (argv.verbose) console.log('/getdata with',req.query.at);
+        if (config.verbose) console.log('/getdata with',req.query.at);
         MongoClient.connect(mongoUri, function(err, db) {
             if(err) {
                 console.log('error connecting to database:', err);
@@ -487,14 +487,14 @@ app.namespace(baseUrl, function() {
             }
             var collection = db.collection("tesla_stream");
             if (req.query.at === null) {
-                if (argv.verbose) console.log("why is there no 'at' parameter???");
+                if (config.verbose) console.log("why is there no 'at' parameter???");
                 return;
             }
             // get the data at time 'at'
             ts = +req.query.at;
             options = { 'sort': [['ts', 'desc']], 'limit': 1};
             collection.find({"ts": {"$lte": +ts}}, options).toArray(function(err,docs) {
-                if (argv.verbose) console.log("got datasets:", docs.length);
+                if (config.verbose) console.log("got datasets:", docs.length);
                 if (docs.length === 0) {
                     // that shouldn't happen unless the database is empty...
                     console.log("no data found for /getdata request at time", console.log(new Date(+ts).toString));
@@ -567,7 +567,7 @@ app.namespace(baseUrl, function() {
             if (+endTime > +currentTime)
                 endTime = +currentTime;
             collection.find({"ts": {"$gt": +lastTime, "$lte": +endTime}}).toArray(function(err,docs) {
-                if (argv.verbose) console.log("got datasets:", docs.length);
+                if (config.verbose) console.log("got datasets:", docs.length);
                 if (docs.length === 0) {
                     // create one dummy entry so the map app knows the last time we looked at
                     docs = [ { "ts": +endTime, "record": [ +lastTime+"" ,"0","0","0","0","0","0","0","0","0","0","0"]} ];
@@ -584,7 +584,7 @@ app.namespace(baseUrl, function() {
                     comma = ",";
                 });
                 res.end("]", "utf-8");
-                if (!argv.silent) {
+                if (!config.silent) {
                     var showTime = new Date(lastTime);
                     console.log("last timestamp:", lastTime, showTime.toString());
                 }
@@ -618,7 +618,7 @@ app.namespace(baseUrl, function() {
             var collection = db.collection("tesla_stream");
             var searchString = {$gte: +from, $lte: +to};
             collection.find({"ts": searchString}).limit(1).toArray(function(err,docs) {
-                if (argv.verbose) console.log("got datasets:", docs.length);
+                if (config.verbose) console.log("got datasets:", docs.length);
                 docs.forEach(function(doc) {
                     var record = doc.record;
                     var vals = record.toString().replace(",,",",0,").split(/[,\n\r]/);
@@ -637,7 +637,7 @@ app.namespace(baseUrl, function() {
                 started = true;
             });
         });
-        if (!argv.silent) console.log('done sending the initial page');
+        if (!config.silent) console.log('done sending the initial page');
     });
 
     app.get('/energy', ensureAuthenticated, function(req, res) {
@@ -732,7 +732,7 @@ app.namespace(baseUrl, function() {
                 lastDate = +from;
                 collection.find({"chargeState": {"$exists": true},
                          "ts": {$gte: +from, $lte: +to}}).toArray(function(err,docs) {
-                    if (argv.verbose) console.log("Found " + docs.length + " entries in aux DB");
+                    if (config.verbose) console.log("Found " + docs.length + " entries in aux DB");
                     outputAmp = "[" + (+firstDate) + ",0]";
                     outputVolt = "[" + (+firstDate) + ",0]";
                     outputPower = "[" + (+firstDate) + ",0]";
@@ -821,7 +821,7 @@ app.namespace(baseUrl, function() {
                             .replace("MAGIC_CAPACITY", capacity)
                             .replace("MAGIC_DISPLAY_SYSTEM", '"' + system + '"');
                         res.end(response, "utf-8");
-                        if (argv.verbose) console.log("delivered", outputSOC.length,"records and", response.length, "bytes");
+                        if (config.verbose) console.log("delivered", outputSOC.length,"records and", response.length, "bytes");
                     });
                 });
             });
@@ -855,7 +855,7 @@ app.namespace(baseUrl, function() {
         // let's use the data that we seem to are converging on in the forums instead:
         var ratedWh = (capacity == 85) ? 286 : 267;
         var delta = ratedWh * (cS1.battery_range - cS2.battery_range);
-    //  if (argv.verbose) { // great for debugging
+    //  if (config.verbose) { // great for debugging
     //      console.log(new Date(d1.ts), new Date(d2.ts), "ratedWh", ratedWh.toFixed(1),
     //              "delta range", (cS1.battery_range - cS2.battery_range).toFixed(1) ,"delta", delta.toFixed(1));
     //  }
@@ -914,10 +914,10 @@ app.namespace(baseUrl, function() {
             }
             res.setHeader("Content-Type", "text/html");
             var collection = db.collection("tesla_stream");
-            if (argv.verbose)
+            if (config.verbose)
                 console.log("starting DB request after", new Date().getTime() - debugStartTime, "ms");
             collection.find({"ts": {"$gte": from.getTime(), "$lte": to.getTime()}}).toArray(function(err,docs) {
-                if (argv.verbose)
+                if (config.verbose)
                     console.log("processing data after", new Date().getTime() - debugStartTime, "ms");
                 // this is really annoying; the values from the database frequently aren't sorted by
                 // timestamp, even if you didn't edit the data. So we need to sort here - the mongoDB
@@ -929,7 +929,7 @@ app.namespace(baseUrl, function() {
                 var week, distW = 0, kWhW = 0, usedW = 0, chargeW = 0;
                 var startOdo, charge, minSOC, maxSOC, increment, kWs;
                 if (docs === null) {
-                    if (argv.verbose) {
+                    if (config.verbose) {
                         console.log(err);
                         console.log("no output for stream from", +from, "to", +to);
                     }
@@ -1164,7 +1164,7 @@ app.namespace(baseUrl, function() {
                             .replace("MAGIC_START", startDate)
                             .replace("MAGIC_DISPLAY_SYSTEM", '"' + system + '"');
                         res.end(response, "utf-8");
-                        if (argv.verbose)
+                        if (config.verbose)
                             console.log("total processing time", new Date().getTime() - debugStartTime, "ms");
                     });
 
@@ -1206,7 +1206,7 @@ app.namespace(baseUrl, function() {
                 var searchString = {$and: [ {'from': {$gte: ""+from.getTime()}}, {'to': {$lte: ""+to.getTime()}} ] };
                 collection.find(searchString).toArray(function(err,docs) {
                     var row = 0;
-                    if (argv.verbose) console.log("got datasets:", docs.length);
+                    if (config.verbose) console.log("got datasets:", docs.length);
                     table += "<tbody>\n";
                     docs.forEach(function(doc) {
                         row++;
@@ -1247,6 +1247,6 @@ app.namespace(baseUrl, function() {
     app.use(baseUrl, express.static(__dirname + '/otherfiles'));
 });
 
-app.listen(argv.port);
+app.listen(config.port);
 
-if (!argv.silent) console.log("Server running on port " + argv.port);
+if (!config.silent) console.log("Server running on port " + config.port);
