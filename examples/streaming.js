@@ -113,7 +113,10 @@ if (config.mongouri || argv.db) {
     MongoClient = require('mongodb').MongoClient;
     
     var mongoUri = config.mongouri || process.env.MONGOLAB_URI|| process.env.MONGOHQ_URI || 'mongodb://127.0.0.1:27017/' + argv.db;
-    if (!argv.db) argv.db = true;
+    console.log('Using MongoDB URI: ' + mongoUri);
+    if (!argv.db) {
+        argv.db = true;
+    }
     MongoClient.connect(mongoUri, function(err, db) {
         if(err) throw err;
         collectionS = db.collection('tesla_stream');
