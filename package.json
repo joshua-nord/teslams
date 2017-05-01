@@ -22,7 +22,8 @@
   "devDependencies": {},
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "streaming": "node examples/streaming.js"
+    "streaming": "node examples/streaming.js",
+    "visualize": "node examples/visualize/visualize.js"
 
   },
   "repository": {
