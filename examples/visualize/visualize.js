@@ -321,9 +321,13 @@ app.namespace(baseUrl, function() {
         var yearStart = new Date(d.getFullYear(),0,1);
         return Math.ceil(( ( (d - yearStart) / 86400000) + 1)/7);
     }
-    MongoClient.connect(mongoUri, function(err, db) {
+
+    
+
+    MongoClient.connect(mongoUri, function(err, client) {
         // this is the first time we connect - if we get an error, just throw it
         if(err) throw(err);
+        var db = client.db(config.db);
         var collectionA = db.collection("tesla_aux");
         // get the last stored entry that describes the vehicles
         var query = {'vehicles': { '$exists': true } };
@@ -487,11 +491,12 @@ app.namespace(baseUrl, function() {
     app.get('/getdata', ensureAuthenticated, function (req, res) {
         var ts, options, vals;
         if (config.verbose) console.log('/getdata with',req.query.at);
-        MongoClient.connect(mongoUri, function(err, db) {
+        MongoClient.connect(mongoUri, function(err, client) {
             if(err) {
                 console.log('error connecting to database:', err);
                 return;
             }
+            var db = client.db(config.db);
             var collection = db.collection("tesla_stream");
             if (req.query.at === null) {
                 if (config.verbose) console.log("why is there no 'at' parameter???");
@@ -511,17 +516,18 @@ app.namespace(baseUrl, function() {
                 vals = docs[0].record.toString().replace(",,",",0,").split(",");
                 res.write("[" + JSON.stringify(vals) + "]", "utf-8");
                 res.end();
-                db.close();
+                client.close();
             });
         });
     });
 
     app.get('/storetrip', ensureAuthenticated, function(req, res) {
-        MongoClient.connect(mongoUri, function(err, db) {
+        MongoClient.connect(mongoUri, function(err, client) {
             if (err) {
                 console.log('error connecting to database:', err);
                 return;
             }
+            var db = client.db(config.db);
             var collection = db.collection("trip_data");
             collection.remove({ 'dist': '-1'}, function(err,docs) {
                 collection.insert(req.query, { 'safe': true }, function(err,docs) {
@@ -536,11 +542,12 @@ app.namespace(baseUrl, function() {
     });
 
     app.get('/getlasttrip', ensureAuthenticated, function(req, res) {
-        MongoClient.connect(mongoUri, function(err, db) {
+        MongoClient.connect(mongoUri, function(err, client) {
             if (err) {
                 console.log('error connecting to database:', err);
                 return;
             }
+            var db = client.db(config.db);
             var collection = db.collection("trip_data");
             var options = { 'sort': [['chargeState.battery_range', 'desc']] };
             collection.find({},{ 'sort': [['from', 'desc']], 'limit': 1 }).toArray(function(err,docs) {
@@ -555,11 +562,12 @@ app.namespace(baseUrl, function() {
         // we don't keep the database connection as that has caused occasional random issues while testing
         if (!started)
             return;
-        MongoClient.connect(mongoUri, function(err, db) {
+        MongoClient.connect(mongoUri, function(err, client) {
             if(err) {
                 console.log('error connecting to database:', err);
                 return;
             }
+            var db = client.db(config.db);
             var collection = db.collection("tesla_stream");
             if (req.query.until === null) {
                 console.log("why is there no 'until' parameter???");
@@ -595,7 +603,7 @@ app.namespace(baseUrl, function() {
                     var showTime = new Date(lastTime);
                     console.log("last timestamp:", lastTime, showTime.toString());
                 }
-                db.close();
+                client.close();
             });
         });
     });
@@ -617,11 +625,12 @@ app.namespace(baseUrl, function() {
             res.redirect(baseUrl + '/map?from=' + dates.fromQ + '&to=' + dates.toQ + '&speed=' + speedQ.toFixed(0) + params);
             return;
         }
-        MongoClient.connect(mongoUri, function(err, db) {
+        MongoClient.connect(mongoUri, function(err, client) {
             if(err) {
                 console.log('error connecting to database:', err);
                 return;
             }
+            var db = client.db(config.db);
             var collection = db.collection("tesla_stream");
             var searchString = {$gte: +from, $lte: +to};
             collection.find({"ts": searchString}).limit(1).toArray(function(err,docs) {
@@ -640,7 +649,7 @@ app.namespace(baseUrl, function() {
                         res.end(response, "utf-8");
                     });
                 });
-                db.close();
+                client.close();
                 started = true;
             });
         });
@@ -671,12 +680,13 @@ app.namespace(baseUrl, function() {
         var gMaxE = -1000, gMaxS = -1000;
         var gMinE = 1000, gMinS = 1000;
         var cumulE = 0, cumulR = 0, cumulES, cumulRS, prevTS;
-        MongoClient.connect(mongoUri, function(err, db) {
+        MongoClient.connect(mongoUri, function(err, client) {
             var speed, energy, soc, vals;
             if(err) {
                 console.log('error connecting to database:', err);
                 return;
             }
+            var db = client.db(config.db);
             res.setHeader("Content-Type", "text/html");
             var collection = db.collection("tesla_stream");
             collection.find({"ts": {$gte: +from, $lte: +to}}).toArray(function(err,docs) {
@@ -792,7 +802,7 @@ app.namespace(baseUrl, function() {
                     outputVolt += ",[" + (+chartEnd) + ",0]";
                     outputPower += ",[" + (+chartEnd) + ",0]";
 
-                    db.close();
+                    client.close();
                     fs.readFile(__dirname + "/energy.html", "utf-8", function(err, data) {
                         if (err) throw err;
                         var fD = new Date(firstDate);
@@ -869,11 +879,12 @@ app.namespace(baseUrl, function() {
         return delta / 1000;
     }
     app.get('/test', ensureAuthenticated, function(req, res) {
-        MongoClient.connect(mongoUri, function(err, db) {
+        MongoClient.connect(mongoUri, function(err, client) {
             if(err) {
                 console.log('error connecting to database:', err);
                 return;
             }
+            var db = client.db(config.db);
             var output = "";
             var collection = db.collection("tesla_aux");
             var options = { 'sort': [['chargeState.battery_range', 'desc']] };
@@ -885,7 +896,7 @@ app.namespace(baseUrl, function() {
                         comma = ',';
                     }
                 });
-                db.close();
+                client.close();
                 fs.readFile(__dirname + "/test.html", "utf-8", function(err, data) {
                     if (err) throw err;
                     res.send(data.replace("MAGIC_TEST", output));
@@ -914,11 +925,12 @@ app.namespace(baseUrl, function() {
         }
         var outputD = "", outputC = "", outputA = "", comma, firstDate = 0, lastDay = 0, lastDate = 0, distHash = {}, useHash = {};
         var outputWD = "", outputWC = "", outputWA = "", commaW, distWHash = {}, useWHash ={};
-        MongoClient.connect(mongoUri, function(err, db) {
+        MongoClient.connect(mongoUri, function(err, client) {
             if(err) {
                 console.log('error connecting to database:', err);
                 return;
             }
+            var db = client.db(config.db);
             res.setHeader("Content-Type", "text/html");
             var collection = db.collection("tesla_stream");
             if (config.verbose)
@@ -1151,7 +1163,7 @@ app.namespace(baseUrl, function() {
                     });
                     updateChargeValues(lastDoc);
                     updateChargeWValues(true);
-                    db.close();
+                    client.close();
                     fs.readFile(__dirname + "/stats.html", "utf-8", function(err, data) {
                         if (err) throw err;
                         var fD = new Date(firstDate);
@@ -1203,11 +1215,12 @@ app.namespace(baseUrl, function() {
             table += "<th rowspan=2>Wegstrecke</th><th rowspan=2>Reisezweck</th><th rowspan=2>Auto<br>Kennzeichen</th>";
             table += "<th rowspan=2>KM Stand am<br>Zielort</th><th rowspan=2>Unterschrift</th></tr>";
             table += "<tr><th>Datum</th><th>Zeit</th><th>Datum</th><th>Zeit</th></tr></thead>";
-            MongoClient.connect(mongoUri, function(err, db) {
+            MongoClient.connect(mongoUri, function(err, client) {
                 if(err) {
                     console.log('error connecting to database:', err);
                     return;
                 }
+                var db = client.db(config.db);
                 var collection = db.collection("trip_data");
                 // strangely the timestamps end up in the database as strings
                 var searchString = {$and: [ {'from': {$gte: ""+from.getTime()}}, {'to': {$lte: ""+to.getTime()}} ] };
@@ -1241,7 +1254,7 @@ app.namespace(baseUrl, function() {
                             lltable += ",[0,0,0,0]";
                     });
                     table += "</tbody>\n";
-                    db.close();
+                    client.close();
                     res.end(data.replace("MAGIC_NAV", nav)
                             .replace("MAGIC_TRIP_TABLE", table)
                             .replace("MAGIC_ADDR_TABLE", lltable), "utf-8");

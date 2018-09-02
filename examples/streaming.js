@@ -109,18 +109,24 @@ if (!config.mongouri && !argv.db && !argv.awsiot && !config.mqtt && !argv.file) 
     console.log('No outputs specified. Add one (or more) of --db, --file, --mqtt, or --awsiot flags to specify outputs');
     process.exit();
 }
-if (config.mongouri || argv.db) {
+var mongoDB = argv.db || config.db;
+
+if (config.mongouri || mongoDB) {
     MongoClient = require('mongodb').MongoClient;
     
-    var mongoUri = config.mongouri || process.env.MONGOLAB_URI|| process.env.MONGOHQ_URI || 'mongodb://127.0.0.1:27017/' + argv.db;
+    var mongoUri = config.mongouri || process.env.MONGOLAB_URI|| process.env.MONGOHQ_URI || 'mongodb://127.0.0.1:27017/';
+
     console.log('Using MongoDB URI: ' + mongoUri);
+    console.log('Using MongoDB DB: ' + mongoDB);
+
     if (!argv.db) {
         argv.db = true;
     }
-    MongoClient.connect(mongoUri, function(err, db) {
+
+    MongoClient.connect(mongoUri, function(err, client) {
         if(err) throw err;
-        collectionS = db.collection('tesla_stream');
-        collectionA = db.collection('tesla_aux');
+        collectionS = client.db(mongoDB).collection('tesla_stream');
+        collectionA = client.db(mongoDB).collection('tesla_aux');
     });
 } 
 if (argv.awsiot) {
