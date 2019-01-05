@@ -482,7 +482,7 @@ function getAux() {
         //TODO add periodic /vehicles state check to see if nap mode should be cancelled because car is back online again
         return;
     } else {
-        rpm = rpm + 2; // increase REST request counter by 2 for following requests
+        rpm = rpm + 3; // increase REST request counter by 3 for following requests
         ulog( 'getting charge state Aux data');
         teslams.get_charge_state( getAux.vid, function(data) {
             var doc = { 'ts': new Date().getTime(), 'chargeState': data };
@@ -546,6 +546,41 @@ function getAux() {
                     });
                 }
             }    
+        });
+
+        ulog( 'getting drive state Aux data');
+        teslams.get_drive_state( getAux.vid, function(data) {
+            var ds = JSON.stringify(data), doc;
+            if (ds.length > 2 && ds != JSON.stringify(getAux.drive)) {
+                getAux.drive = data;
+                doc = { 'ts': new Date().getTime(), 'driveState': data };
+                if (argv.db && (data.shift_state !== undefined)) {
+                    collectionA.insert(doc, { 'safe': true }, function(err,docs) {
+                        if(err) throw err;
+                    });
+                }
+                if (argv.mqtt) {
+                    //publish drive_state data
+                    data.timestamp = new Date().getTime();
+                    data.id_s = getAux.vid.toString();
+                    try {
+                        client.publish(argv.topic + '/' + getAux.vid + '/drive_state', JSON.stringify(data));
+                    } catch (error) {
+                        // failed to send, therefore stop publishing and log the error thrown
+                        console.log('Error while publishing drive_state message to mqtt broker: ' + error.toString());
+                    }
+                }
+                if (argv.ifttt) {
+                    var options = {
+                        method: 'POST',
+                        url: ifttt,
+                        form: { value1: "drive_state", value2: JSON.stringify(data) }
+                    };
+                    request( options, function (error, response, body) {
+                        ulog( 'IFTTT POST returned ' + response.statusCode );
+                    });
+                }
+            }
         });
     }
 }
