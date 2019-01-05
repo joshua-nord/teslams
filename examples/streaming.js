@@ -564,7 +564,7 @@ function getAux() {
                     data.timestamp = new Date().getTime();
                     data.id_s = getAux.vid.toString();
                     try {
-                        client.publish(argv.topic + '/' + getAux.vid + '/drive_state', JSON.stringify(data));
+                        client.publish(argv.topic + '/' + getAux.vid + '/drive_state', JSON.stringify(data),{qos: 0, retain:true});
                     } catch (error) {
                         // failed to send, therefore stop publishing and log the error thrown
                         console.log('Error while publishing drive_state message to mqtt broker: ' + error.toString());
