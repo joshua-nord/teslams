@@ -330,6 +330,13 @@ function tsla_poll( vid, long_vid, token ) {
                 }, 10000); // 10 seconds
                 pcount = pcount - 1;
                 return;
+            } else if (body.length == 0) {
+                ulog('WARN: HTTP returned OK but body is empty');
+                setTimeout(function() {
+                    tsla_poll( vid, long_vid, token ); // poll again
+                }, 10000); // 10 seconds
+                pcount = pcount - 1;
+                return;
             } else {
                 ulog('Poll return HTTP OK and body is this:\n' + body);
                 // put short delay to avoid infinite recursive loop and stack overflow
